@@ -1,4 +1,4 @@
-# 📸 Laravel 11 Multiple Image Upload with Repeater (Dynamic Fields)
+ Laravel 11 Multiple Image Upload with Repeater (Dynamic Fields)
 
 ![Laravel](https://img.shields.io/badge/Laravel-11-orange)
 ![PHP](https://img.shields.io/badge/PHP-8.2-blue)
@@ -7,7 +7,7 @@
 
 ---
 
-## ⭐ Overview
+ Overview
 
 This project demonstrates how to upload **multiple images dynamically using a repeater (Add More fields)** in Laravel 11.
 
@@ -22,7 +22,7 @@ It includes:
 
 ---
 
-## ⭐ Features
+ Features
 
 - Add unlimited images dynamically  
 - Preview images before upload  
@@ -34,7 +34,7 @@ It includes:
 
 ---
 
-## 📂 Folder Structure
+ Folder Structure
 
 ```
 MULTIPLE_IMAGE_REPEATER/
@@ -70,7 +70,7 @@ MULTIPLE_IMAGE_REPEATER/
 
 ---
 
-## 🛠 Installation
+ Installation
 
 ```bash
 composer create-project laravel/laravel multiple-image-upload
@@ -88,7 +88,7 @@ php artisan migrate
 
 ---
 
-## 🌎 Environment Setup
+ Environment Setup
 
 Update `.env`:
 
@@ -100,9 +100,9 @@ DB_PASSWORD=root
 
 ---
 
-## 🧱 Migrations
+ Migrations
 
-### Products Table
+ Products Table
 
 ```
 id  
@@ -110,7 +110,7 @@ name
 description  
 ```
 
-### Product Images Table
+ Product Images Table
 
 ```
 id  
@@ -126,9 +126,9 @@ php artisan migrate
 
 ---
 
-## 📦 Models
+ Models
 
-### Product Model
+ Product Model
 
 ```php
 class Product extends Model
@@ -142,7 +142,7 @@ class Product extends Model
 }
 ```
 
-### ProductImage Model
+ ProductImage Model
 
 ```php
 class ProductImage extends Model
@@ -153,7 +153,7 @@ class ProductImage extends Model
 
 ---
 
-## 🚏 Routes
+ Routes
 
 ```php
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
@@ -164,9 +164,9 @@ Route::get('/products/show/{id}', [ProductController::class, 'show'])->name('pro
 
 ---
 
-## 🧠 Controller (Multiple Image Upload Logic)
+ Controller (Multiple Image Upload Logic)
 
-### Store Function
+ Store Function
 
 ```php
 public function store(Request $request)
@@ -200,11 +200,11 @@ public function store(Request $request)
 
 ---
 
-# 🎨 Blade Pages
+ Blade Pages
 
 ---
 
-## 1️⃣ Create Page (Dynamic Repeater)
+ Create Page (Dynamic Repeater)
 
 ```
 /resources/views/products/create.blade.php
@@ -219,7 +219,7 @@ Includes:
 
 ---
 
-## 2️⃣ Index Page
+ Index Page
 
 Shows product list with:
 - Product name  
@@ -227,7 +227,7 @@ Shows product list with:
 
 ---
 
-## 3️⃣ Show Page (Gallery)
+ Show Page (Gallery)
 
 Displays uploaded multiple images.
 
@@ -236,7 +236,7 @@ Displays uploaded multiple images.
 
 
 
-# ▶ Run Application
+ Run Application
 
 ```
 php artisan serve
