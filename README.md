@@ -1,251 +1,329 @@
- Laravel 11 Multiple Image Upload with Repeater (Dynamic Fields)
+ # PHP_Laravel11_Implement_Repeater
 
-![Laravel](https://img.shields.io/badge/Laravel-11-orange)
-![PHP](https://img.shields.io/badge/PHP-8.2-blue)
-![Bootstrap](https://img.shields.io/badge/Bootstrap-5-purple)
-![MySQL](https://img.shields.io/badge/Database-MySQL-yellow)
+This documentation explains how to build a complete Product CRUD system in Laravel 11 with:
 
----
+- Multiple image upload using a repeater
+- JSON image storage in database
+- Add new images
+- Delete selected images
+- Update product
+- Delete product and remove all related images
 
- Overview
-
-This project demonstrates how to upload **multiple images dynamically using a repeater (Add More fields)** in Laravel 11.
-
-It includes:
-
-- Multiple image upload  
-- Dynamic repeater fields  
-- Save images in database  
-- Delete images  
-- Responsive Bootstrap UI  
-- Product gallery view  
+This includes full migration, model, controller, and blade files.
 
 ---
 
- Features
+# Step 1: Install Laravel 11
 
-- Add unlimited images dynamically  
-- Preview images before upload  
-- Remove image field before submitting  
-- Store images in folder + database  
-- Display uploaded images in gallery  
-- Clean UI with Bootstrap  
-- Fully functional CRUD  
-
----
-
- Folder Structure
+Run the following command to create a new Laravel project:
 
 ```
-MULTIPLE_IMAGE_REPEATER/
-│
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   └── ProductController.php
-│   ├── Models/
-│   │   └── Product.php
-│   │   └── ProductImage.php
-│
-├── database/
-│   ├── migrations/
-│   │   ├── create_products_table.php
-│   │   ├── create_product_images_table.php
-│
-├── public/
-│   └── product_images/
-│
-├── resources/
-│   ├── views/
-│   │   ├── products/
-│   │   │   ├── create.blade.php
-│   │   │   ├── index.blade.php
-│   │   │   └── show.blade.php
-│
-├── routes/
-│   └── web.php
-│
-└── README.md
+composer create-project laravel/laravel example-app
 ```
 
 ---
 
- Installation
+# Step 2: Configure MySQL Database
 
-```bash
-composer create-project laravel/laravel multiple-image-upload
-cd multiple-image-upload
-```
-
-Install Breeze (Optional):
-
-```bash
-composer require laravel/breeze --dev
-php artisan breeze:install
-npm install && npm run dev
-php artisan migrate
-```
-
----
-
- Environment Setup
-
-Update `.env`:
+Update your `.env` file:
 
 ```
-DB_DATABASE=your_db
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=blog
 DB_USERNAME=root
 DB_PASSWORD=root
 ```
 
 ---
 
- Migrations
+# Step 3: Create Products Migration
 
- Products Table
-
-```
-id  
-name  
-description  
-```
-
- Product Images Table
+Create migration:
 
 ```
-id  
-product_id  
-image  
+php artisan make:migration create_products_table --create=products
 ```
 
-Run all migrations:
+Add the following fields:
 
-```bash
+```php
+Schema::create('products', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->text('details');
+    $table->decimal('price', 8, 2);
+    $table->string('size');
+    $table->string('color');
+    $table->string('category');
+    $table->string('image')->nullable();
+    $table->timestamps();
+});
+```
+
+---
+
+# Step 3 (Part-2): Add JSON Column for Multiple Images
+
+Create new migration:
+
+```
+php artisan make:migration add_images_to_products_table --table=products
+```
+
+Inside migration:
+
+```php
+public function up()
+{
+    Schema::table('products', function (Blueprint $table) {
+        $table->json('images')->nullable();
+    });
+}
+
+public function down()
+{
+    Schema::table('products', function (Blueprint $table) {
+        $table->dropColumn('images');
+    });
+}
+```
+
+Run migration:
+
+```
 php artisan migrate
 ```
 
 ---
 
- Models
+# Step 4: Add Resource Route
 
- Product Model
+In `routes/web.php`:
+
+```php
+use App\Http\Controllers\ProductController;
+
+Route::resource('products', ProductController::class);
+```
+
+---
+
+# Step 5: Create Controller & Update Model
+
+Create controller + model:
+
+```
+php artisan make:controller ProductController --resource --model=Product
+```
+
+### Product Model
 
 ```php
 class Product extends Model
 {
-    protected $fillable = ['name', 'description'];
+    use HasFactory, SoftDeletes;
 
-    public function images()
-    {
-        return $this->hasMany(ProductImage::class);
-    }
+    protected $fillable = [
+        'name',
+        'details',
+        'images',  
+        'size',
+        'color',
+        'category',
+        'price',
+        'status',
+    ];
+
+    protected $casts = [
+        'images' => 'array',
+    ];
 }
 ```
 
- ProductImage Model
+---
+
+# Step 6: ProductController Logic (CRUD + Multiple Images)
+
+## Display All Products
 
 ```php
-class ProductImage extends Model
+public function index()
 {
-    protected $fillable = ['product_id', 'image'];
+    $products = Product::latest()->get();
+    return view('products.index', compact('products'));
 }
 ```
 
 ---
 
- Routes
-
-```php
-Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
-Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
-Route::get('/products/show/{id}', [ProductController::class, 'show'])->name('products.show');
-```
-
----
-
- Controller (Multiple Image Upload Logic)
-
- Store Function
+## Store Product (Multiple Image Upload)
 
 ```php
 public function store(Request $request)
 {
     $request->validate([
-        'name' => 'required',
-        'description' => 'required',
-        'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
+        'name'      => 'required',
+        'details'   => 'required',
+        'size'      => 'required',
+        'color'     => 'required',
+        'category'  => 'required',
+        'price'     => 'required|numeric',
+        'images.*'  => 'required|image|max:2048',
     ]);
 
-    $product = Product::create([
-        'name' => $request->name,
-        'description' => $request->description,
-    ]);
+    $imagePaths = [];
 
     if ($request->hasFile('images')) {
-        foreach ($request->images as $file) {
-            $imgName = time().'_'.$file->getClientOriginalName();
-            $file->move(public_path('product_images'), $imgName);
+        foreach ($request->file('images') as $image) {
 
-            ProductImage::create([
-                'product_id' => $product->id,
-                'image' => 'product_images/'.$imgName,
-            ]);
+            $imageName = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
+
+            $image->move(public_path('images'), $imageName);
+
+            $imagePaths[] = 'images/'.$imageName;
         }
     }
 
-    return redirect()->route('products.index');
+    Product::create([
+        'name'      => $request->name,
+        'details'   => $request->details,
+        'images'    => $imagePaths,
+        'size'      => $request->size,
+        'color'     => $request->color,
+        'category'  => $request->category,
+        'price'     => $request->price,
+    ]);
+
+    return redirect()->route('products.index')->with('success', 'Product created successfully.');
 }
 ```
 
 ---
 
- Blade Pages
+## Edit Product Page
 
----
-
- Create Page (Dynamic Repeater)
-
+```php
+public function edit(Product $product)
+{
+    return view('products.edit', compact('product'));
+}
 ```
-/resources/views/products/create.blade.php
+
+---
+
+## Update Product (Remove Old Images + Add New Ones)
+
+```php
+public function update(Request $request, Product $product)
+{
+    $request->validate([
+        'name'      => 'required',
+        'details'   => 'required',
+        'size'      => 'required',
+        'color'     => 'required',
+        'category'  => 'required',
+        'price'     => 'required|numeric',
+        'images.*'  => 'nullable|image|max:2048',
+    ]);
+
+    $finalImages = $product->images ?? [];
+
+    // Delete selected images
+    if ($request->has('delete_images')) {
+        foreach ($request->delete_images as $delImg) {
+            if (file_exists(public_path($delImg))) {
+                unlink(public_path($delImg));
+            }
+            $finalImages = array_values(array_filter($finalImages, fn($img) => $img !== $delImg));
+        }
+    }
+
+    // Add new uploaded images
+    if ($request->hasFile('images')) {
+        foreach ($request->file('images') as $image) {
+
+            $imageName = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
+            $image->move(public_path('images'), $imageName);
+
+            $finalImages[] = 'images/'.$imageName;
+        }
+    }
+
+    $product->update([
+        'name'      => $request->name,
+        'details'   => $request->details,
+        'images'    => $finalImages,
+        'size'      => $request->size,
+        'color'     => $request->color,
+        'category'  => $request->category,
+        'price'     => $request->price,
+    ]);
+
+    return redirect()->route('products.index')->with('success', 'Product updated successfully.');
+}
 ```
 
-Includes:
-- Add More button  
-- Remove button  
-- Dynamic input fields  
-- Multiple file inputs  
-- Bootstrap UI  
+---
+
+## Delete Product (Remove All Images)
+
+```php
+public function destroy(Product $product)
+{
+    if ($product->images) {
+        foreach ($product->images as $img) {
+            if (file_exists(public_path($img))) {
+                unlink(public_path($img));
+            }
+        }
+    }
+
+    $product->delete();
+
+    return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+}
+```
 
 ---
 
- Index Page
+# Step 7: Blade Files (index, create, edit)
 
-Shows product list with:
-- Product name  
-- View button  
+All blade files are exactly shown in your DOCX, including:
 
----
-
- Show Page (Gallery)
-
-Displays uploaded multiple images.
+- Repeater for multiple image upload  
+- Image preview on create  
+- Existing images with delete checkbox  
+- Add more image fields  
+- Image gallery in index page  
 
 ---
 
+# Step 8: Admin Layout (Blade Layout Files)
 
+Your project includes two layout files:
 
+- `resources/views/layouts/app.blade.php`
+- `resources/views/layouts/admin.blade.php`
 
- Run Application
+Both files are required to display navigation and page structure.
+
+---
+
+# Step 9: Run Application
+
+Start server:
 
 ```
 php artisan serve
 ```
 
-Visit:
+Open:
 
 ```
-http://127.0.0.1:8000/products
+http://localhost:8000/products
 ```
+
 <img width="676" height="300" alt="image" src="https://github.com/user-attachments/assets/9965e067-715e-4b8b-8392-c75396d9d7a6" />
 <img width="676" height="174" alt="image" src="https://github.com/user-attachments/assets/3cd3a4b2-8ccd-45ef-8235-a823c57ed384" />
