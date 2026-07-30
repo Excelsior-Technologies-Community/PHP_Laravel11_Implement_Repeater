@@ -4,76 +4,107 @@
 <div class="container">
     <h1>Create Product</h1>
 
-    <!-- Main form with multipart for multiple image uploads -->
     <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
-        @csrf  <!-- CSRF protection token -->
+        @csrf
 
-        <!-- PRODUCT NAME INPUT -->
         <div class="mb-3">
             <label class="form-label fw-bold">Name</label>
-            <input type="text" name="name" class="form-control" required>
+            <input type="text" name="name" class="form-control" value="{{ old('name') }}" required>
+            @error('name')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- PRODUCT DETAILS TEXTAREA -->
         <div class="mb-3">
             <label class="form-label fw-bold">Details</label>
-            <textarea name="details" class="form-control" required></textarea>
+            <textarea name="details" class="form-control" required>{{ old('details') }}</textarea>
+            @error('details')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- DYNAMIC MULTIPLE IMAGE UPLOAD WITH PREVIEW -->
         <div class="mb-3">
             <label class="form-label fw-bold">Product Images</label>
-
-            <!-- Image repeater container -->
             <div id="imageRepeater">
-                <!-- Initial image input row with preview & remove button -->
                 <div class="row mb-2 repeater-item">
                     <div class="col-md-5">
-                        <!-- File input with array name for multiple uploads -->
                         <input type="file" name="images[]" class="form-control image-input" accept="image/*">
                     </div>
-
                     <div class="col-md-5">
-                        <!-- Image preview (hidden initially) -->
                         <img src="" width="80" class="img-preview rounded border" style="display:none;">
                     </div>
-
                     <div class="col-md-2">
-                        <!-- Remove button for this image row -->
                         <button type="button" class="btn btn-danger removeRow">Remove</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Add more image inputs button -->
             <button type="button" id="addImage" class="btn btn-secondary mt-2">+ Add More Images</button>
+            @error('images.*')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- PRODUCT SIZE INPUT -->
         <div class="mb-3">
             <label class="form-label fw-bold">Size</label>
-            <input type="text" name="size" class="form-control" required>
+            <input type="text" name="size" class="form-control" value="{{ old('size') }}" required>
+            @error('size')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- PRODUCT COLOR INPUT -->
         <div class="mb-3">
             <label class="form-label fw-bold">Color</label>
-            <input type="text" name="color" class="form-control" required>
+            <input type="text" name="color" class="form-control" value="{{ old('color') }}" required>
+            @error('color')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- PRODUCT CATEGORY INPUT -->
         <div class="mb-3">
             <label class="form-label fw-bold">Category</label>
-            <input type="text" name="category" class="form-control" required>
+            <input type="text" name="category" class="form-control" value="{{ old('category') }}" required>
+            @error('category')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- PRODUCT PRICE INPUT -->
         <div class="mb-3">
             <label class="form-label fw-bold">Price</label>
-            <input type="number" name="price" class="form-control" required>
+            <input type="number" name="price" class="form-control" value="{{ old('price') }}" required step="0.01">
+            @error('price')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
         </div>
 
-        <!-- FORM ACTION BUTTONS -->
+        <div class="mb-3">
+            <label class="form-label fw-bold">Status</label>
+            <select name="status" class="form-select" required>
+                <option value="">Select Status</option>
+                @foreach($statuses as $status)
+                    <option value="{{ $status }}" {{ old('status') === $status ? 'selected' : '' }}>
+                        {{ ucfirst($status) }}
+                    </option>
+                @endforeach
+            </select>
+            @error('status')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tags</label>
+            <select name="tags[]" class="form-select select2" multiple>
+                @foreach($tags as $tag)
+                    <option value="{{ $tag->id }}" {{ in_array($tag->id, old('tags', [])) ? 'selected' : '' }}>
+                        {{ $tag->tag_name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('tags.*')
+                <div class="text-danger small">{{ $message }}</div>
+            @enderror
+        </div>
+
         <button type="submit" class="btn btn-primary">Create Product</button>
         <a href="{{ route('products.index') }}" class="btn btn-secondary mt-2">Back</a>
     </form>
@@ -82,7 +113,6 @@
 
 @push('scripts')
 <script>
-    // ADD NEW IMAGE INPUT ROW
     document.getElementById('addImage').onclick = function () {
         let html = `
             <div class="row mb-2 repeater-item">
@@ -96,31 +126,26 @@
                     <button type="button" class="btn btn-danger removeRow">Remove</button>
                 </div>
             </div>`;
-        // Append new row to repeater container
         document.getElementById('imageRepeater').insertAdjacentHTML('beforeend', html);
     };
 
-    // REMOVE IMAGE ROW
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('removeRow')) {
-            // Remove entire row when Remove button clicked
             e.target.closest('.repeater-item').remove();
         }
     });
 
-    // IMAGE PREVIEW ON FILE SELECT
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('image-input')) {
             let file = e.target.files[0];
             let preview = e.target.closest('.repeater-item').querySelector('.img-preview');
             let reader = new FileReader();
-            
+
             reader.onload = e => {
-                // Show preview image when file selected
                 preview.src = e.target.result;
                 preview.style.display = 'block';
             };
-            reader.readAsDataURL(file);  // Convert file to base64 for preview
+            reader.readAsDataURL(file);
         }
     });
 </script>

@@ -4,12 +4,14 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerProductsController;
+use App\Http\Controllers\TagController;
 
 
 // Product routes
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('products', ProductController::class);
+    Route::resource('tags', TagController::class);
 });
 
 // Customer product viewing route
