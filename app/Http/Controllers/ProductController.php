@@ -3,105 +3,105 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Tag;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    // Show all products (latest first) - basic listing
-    public function index()
+    public function index(Request $request)
     {
-        // Fetch all products ordered by creation date (newest first)
-        $products = Product::latest()->get();
-        return view('products.index', compact('products'));
+        $query = Product::latest()->whereNull('deleted_at');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $products = $query->paginate(10);
+        $statuses = ['active', 'inactive', 'draft'];
+
+        return view('products.index', compact('products', 'statuses'));
     }
 
-    // Display create product form
     public function create()
     {
-        // Simple create form - no additional data needed
-        return view('products.create');
+        $tags = Tag::all();
+        $statuses = ['active', 'inactive', 'draft'];
+        return view('products.create', compact('tags', 'statuses'));
     }
 
-    // Store new product with MULTIPLE image uploads (REQUIRED)
     public function store(Request $request)
     {
-        // Validate form - images.* validates each file in multiple upload
         $request->validate([
-            'name'      => 'required',           // Product name required
-            'details'   => 'required',           // Description required
-            'size'      => 'required',           // Size required
-            'color'     => 'required',           // Color required
-            'category'  => 'required',           // Category required
-            'price'     => 'required|numeric',   // Numeric price required
-            'images.*'  => 'required|image|max:2048',  // Each image required, max 2MB
+            'name'      => 'required|string|max:255',
+            'details'   => 'required|string|max:2000',
+            'size'      => 'required|string|max:50',
+            'color'     => 'required|string|max:50',
+            'category'  => 'required|string|max:100',
+            'price'     => 'required|numeric|min:0',
+            'status'    => 'required|in:active,inactive,draft',
+            'images.*'  => 'nullable|image|max:2048',
+            'tags'      => 'nullable|array',
+            'tags.*'    => 'exists:tags,id',
         ]);
 
         $imagePaths = [];
 
-        // HANDLE MULTIPLE IMAGE UPLOADS
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                // Generate unique filename using timestamp + uniqid + original extension
                 $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                // Move each image to public/images folder
                 $image->move(public_path('images'), $imageName);
-                // Store relative path in array
                 $imagePaths[] = 'images/' . $imageName;
             }
         }
 
-        // Create product record with array of image paths
         Product::create([
             'name'      => $request->name,
             'details'   => $request->details,
-            'images'    => $imagePaths,          // Array stored directly in DB
+            'images'    => $imagePaths,
             'size'      => $request->size,
             'color'     => $request->color,
             'category'  => $request->category,
             'price'     => $request->price,
+            'status'    => $request->status,
+            'tag_ids'   => $request->tags ?? [],
         ]);
 
-        // Redirect to products list with success message
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
 
-    // Display edit form for specific product
     public function edit(Product $product)
     {
-        // Route model binding automatically loads product by ID
-        return view('products.edit', compact('product'));
+        $tags = Tag::all();
+        $statuses = ['active', 'inactive', 'draft'];
+        return view('products.edit', compact('product', 'tags', 'statuses'));
     }
 
-    // Update existing product with advanced image management
     public function update(Request $request, Product $product)
     {
-        // Same validation as store, but images optional (nullable)
         $request->validate([
-            'name'      => 'required',
-            'details'   => 'required',
-            'size'      => 'required',
-            'color'     => 'required',
-            'category'  => 'required',
-            'price'     => 'required|numeric',
-            'images.*'  => 'nullable|image|max:2048',  // Optional new images
+            'name'      => 'required|string|max:255',
+            'details'   => 'required|string|max:2000',
+            'size'      => 'required|string|max:50',
+            'color'     => 'required|string|max:50',
+            'category'  => 'required|string|max:100',
+            'price'     => 'required|numeric|min:0',
+            'status'    => 'required|in:active,inactive,draft',
+            'images.*'  => 'nullable|image|max:2048',
+            'tags'      => 'nullable|array',
+            'tags.*'    => 'exists:tags,id',
         ]);
 
-        // Start with existing images array (safely handle null)
         $finalImages = $product->images ?? [];
 
-        // DELETE SELECTED IMAGES (from checkboxes in edit form)
         if ($request->has('delete_images')) {
             foreach ($request->delete_images as $delImg) {
-                // Remove physical file from server
                 if (file_exists(public_path($delImg))) {
                     unlink(public_path($delImg));
                 }
-                // Remove image path from array (preserve keys with array_values)
                 $finalImages = array_values(array_filter($finalImages, fn($img) => $img !== $delImg));
             }
         }
 
-        // APPEND NEW IMAGES (add to existing images)
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
@@ -110,34 +110,31 @@ class ProductController extends Controller
             }
         }
 
-        // Update product with final image array
         $product->update([
             'name'      => $request->name,
             'details'   => $request->details,
-            'images'    => $finalImages,         // Updated images array
+            'images'    => $finalImages,
             'size'      => $request->size,
             'color'     => $request->color,
             'category'  => $request->category,
             'price'     => $request->price,
+            'status'    => $request->status,
+            'tag_ids'   => $request->tags ?? [],
         ]);
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
 
-    // Permanently delete product and ALL associated images
     public function destroy(Product $product)
     {
-        // Delete all product images from server
         if ($product->images) {
             foreach ($product->images as $img) {
-                // Remove each physical image file
                 if (file_exists(public_path($img))) {
                     unlink(public_path($img));
                 }
             }
         }
 
-        // Permanently delete product record from database (hard delete)
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
