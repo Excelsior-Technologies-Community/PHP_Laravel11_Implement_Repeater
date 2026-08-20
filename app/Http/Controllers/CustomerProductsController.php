@@ -8,7 +8,14 @@ class CustomerProductsController extends Controller
 {
     public function index()
     {
-        $products = Product::all();
-        return view('customer.index', compact('products'));
+        $products = Product::with('variants')
+            ->where('status', 'active')
+            ->latest()
+            ->get();
+
+        return view(
+            'customer.index',
+            compact('products')
+        );
     }
 }

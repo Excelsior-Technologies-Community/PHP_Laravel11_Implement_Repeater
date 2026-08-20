@@ -13,7 +13,8 @@ class Product extends Model
     protected $fillable = [
         'name',
         'details',
-        'images',   // multiple images JSON
+        'images',
+        'primary_image',
         'size',
         'color',
         'category',
@@ -26,4 +27,20 @@ class Product extends Model
         'images' => 'array',
         'tag_ids' => 'array',
     ];
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function getPrimaryImageAttribute($value)
+    {
+        if ($value) {
+            return $value;
+        }
+
+        $images = $this->images ?? [];
+
+        return $images[0] ?? null;
+    }
 }
